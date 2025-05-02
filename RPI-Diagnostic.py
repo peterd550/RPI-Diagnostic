@@ -7,6 +7,7 @@ import platform
 import socket
 import webbrowser
 from datetime import datetime
+import getpass
 
 # ------------- Diagnostic Functions -------------
 
@@ -40,20 +41,52 @@ def check_temp():
     except:
         return "Unavailable"
 
-# ------------- Stress Test Function -------------
-
-def stress_test():
-    print("\nRunning CPU stress test for 120 seconds...")
+def check_ip():
     try:
-        subprocess.run(
-            ["stress", "--cpu", "4", "--timeout", "120s"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            stdin=subprocess.DEVNULL
-        )
-        print("✅ Stress test completed\n")
-    except FileNotFoundError:
-        print("❌ 'stress' is not installed. Install it using: sudo apt install stress")
+        return socket.gethostbyname(socket.gethostname())
+    except:
+        return "Unavailable"
+
+def check_sudo_user():
+    return getpass.getuser()
+
+def check_ssh():
+    try:
+        with open("/etc/ssh/sshd_config", "r") as f:
+            lines = f.readlines()
+        return "Enabled" if any("PermitRootLogin" in line or "PasswordAuthentication" in line for line in lines) else "Unknown"
+    except:
+        return "Unavailable"
+
+def check_updates():
+    try:
+        output = subprocess.check_output("apt list --upgradable 2>/dev/null", shell=True).decode()
+        lines = [line for line in output.splitlines() if not line.startswith("Listing")]
+        return f"{len(lines)} packages available" if lines else "Up to date"
+    except:
+        return "Unavailable"
+
+def check_usb_devices():
+    try:
+        output = subprocess.check_output("lsusb", shell=True).decode()
+        devices = output.strip().splitlines()
+        return f"{len(devices)} device(s): " + ", ".join([d.split()[-1] for d in devices])
+    except:
+        return "Unavailable"
+
+def check_hostname():
+    try:
+        return socket.gethostname()
+    except:
+        return "Unavailable"
+
+def check_ping():
+    import socket
+    try:
+        socket.create_connection(("8.8.8.8", 53), timeout=2)
+        return "Success"
+    except Exception:
+        return "Failed"
 
 # ------------- HTML Report Generator -------------
 
@@ -85,20 +118,26 @@ def generate_html_report(results):
     with open(report_filename, "w") as f:
         f.write(html)
 
-    print(f"✅ HTML report saved to: {report_filename}")
-    webbrowser.get(using='chromium-browser').open(f"file://{os.path.abspath(report_filename)}")
+    print(f"\n✅ HTML report saved to: {report_filename}")
+    webbrowser.get("chromium-browser").open(f"file://{os.path.abspath(report_filename)}")
 
 # ------------- Main Diagnostic Runner -------------
 
 def run_diagnostics():
     results = []
-    results.append(f"<tr><td>CPU</td><td>{check_cpu()}</td></tr>")
-    results.append(f"<tr><td>RAM</td><td>{check_ram()}</td></tr>")
-    results.append(f"<tr><td>WiFi</td><td>{check_wifi()}</td></tr>")
-    results.append(f"<tr><td>Disk</td><td>{check_disk()}</td></tr>")
-    results.append(f"<tr><td>Temperature</td><td>{check_temp()}</td></tr>")
+    results.append(f"<tr><td>CPU Usage</td><td>{check_cpu()}</td></tr>")
+    results.append(f"<tr><td>RAM Usage</td><td>{check_ram()}</td></tr>")
+    results.append(f"<tr><td>WiFi Status</td><td>{check_wifi()}</td></tr>")
+    results.append(f"<tr><td>Disk Usage</td><td>{check_disk()}</td></tr>")
+    results.append(f"<tr><td>CPU Temperature</td><td>{check_temp()}</td></tr>")
+    results.append(f"<tr><td>Ping Connectivity</td><td>{check_ping()}</td></tr>")
+    results.append(f"<tr><td>IP Address</td><td>{check_ip()}</td></tr>")
+    results.append(f"<tr><td>Sudo User</td><td>{check_sudo_user()}</td></tr>")
+    results.append(f"<tr><td>SSH Config</td><td>{check_ssh()}</td></tr>")
+    results.append(f"<tr><td>Available Updates</td><td>{check_updates()}</td></tr>")
+    results.append(f"<tr><td>USB Devices</td><td>{check_usb_devices()}</td></tr>")
+    results.append(f"<tr><td>Pi Hostname</td><td>{check_hostname()}</td></tr>")
 
-    stress_test()
     generate_html_report(results)
 
 # ------------- Entry Point -------------
