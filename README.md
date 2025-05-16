@@ -23,3 +23,5 @@ A comprehensive Python-based diagnostic tool for Raspberry Pi. It performs syste
    ```bash
    git clone https://github.com/yourusername/pi-diagnostic.git
    cd pi-diagnostic
+   ./installs.sh
+   
